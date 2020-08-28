@@ -8,4 +8,8 @@
     <PackageReference Include="Mono.Cecil" Version="0.11.2" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Onyx.Compiler\Onyx.Compiler.csproj" />
+  </ItemGroup>
+
 </Project>
