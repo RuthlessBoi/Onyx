@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Onyx.Compiler\Onyx.Compiler.csproj" />
     <ProjectReference Include="..\Onyx\Onyx.csproj" />
   </ItemGroup>
 
