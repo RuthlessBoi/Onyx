@@ -13,18 +13,8 @@ namespace Onyx.Binding.Symbols
 
         public TemplateSymbol(string name, GenericsDeclarationSyntax? genericsDeclaration) : base(name) => GenericsDeclaration = genericsDeclaration;
 
-        private Dictionary<string, TypeSymbol> BindGenericReferences(ImmutableArray<TypeSymbol> types)
+        private void RebuildSymbols(Dictionary<string, TypeSymbol> types)
         {
-            var dict = new Dictionary<string, TypeSymbol>();
-
-            for (int i = 0; i < GenericsDeclaration.Parameters.Count; i++)
-                dict.Add(GenericsDeclaration.Parameters[i].Identifier.Text, types[i]);
-
-            return dict;
-        }
-        private void RebuildSymbols(ImmutableArray<TypeSymbol> types)
-        {
-            var boundTypes = BindGenericReferences(types);
             var newSymbols = new Dictionary<string, Symbol>();
 
             foreach (var pair in symbols)
@@ -32,7 +22,7 @@ namespace Onyx.Binding.Symbols
                 if (pair.Value is VariableSymbol symbol)
                 {
                     if (symbol.ValueType is GenericsSymbol genericSymbol)
-                        newSymbols[pair.Key] = new LocalVariableSymbol(symbol.Name, symbol.IsReadOnly, boundTypes[genericSymbol.Name], symbol.Constant, symbol.Signature);
+                        newSymbols[pair.Key] = new LocalVariableSymbol(symbol.Name, symbol.IsReadOnly, types[genericSymbol.Name], symbol.Constant, symbol.Signature);
                     else
                         newSymbols[pair.Key] = symbol;
                 }
@@ -41,7 +31,7 @@ namespace Onyx.Binding.Symbols
             symbols = newSymbols;
         }
 
-        internal override BoundTemplate New(ImmutableArray<KeyValuePair<string, OnyxValue>> arguments, ImmutableArray<TypeSymbol> types)
+        internal override BoundTemplate New(ImmutableArray<KeyValuePair<string, OnyxValue>> arguments, Dictionary<string, TypeSymbol> types)
         {
             var model = new BoundTemplate(this);
 

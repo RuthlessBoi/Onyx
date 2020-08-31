@@ -4,6 +4,7 @@ using Onyx.Binding.Symbols;
 using Onyx.Syntax;
 using Onyx.Syntax.Nodes;
 using Onyx.Text;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
@@ -14,6 +15,13 @@ namespace Onyx.Binding
         private BoundExpression BindTypeofExpression(TypeofExpressionSyntax syntax)
         {
             var type = LookupType(syntax.InternalType.Identifier.Text, syntax.InternalType.IsArray);
+
+            if (type == null)
+            {
+                diagnostics.ReportUndefinedType(syntax.InternalType.Identifier.Location, syntax.InternalType.Identifier.Text);
+
+                return new BoundErrorExpression(syntax);
+            }
 
             return new BoundLiteralExpression(syntax, type.ContainedType);
         }
@@ -200,10 +208,14 @@ namespace Onyx.Binding
             var internalType = syntax.InternalType;
             var type = LookupType(internalType.Identifier.Text, internalType.IsArray);
 
+            if (type.HasAnnotation("deprecated"))
+                diagnostics.ReportInstantiatedDeprecatedType(syntax.InternalType.Identifier.Location, type.Name);
+
             if (type is TemplateSymbol template && syntax.Initializer is TemplateInitializerSyntax templateInitializer)
             {
-                var references = BindGenericsReferences(internalType);
-                var arguments = BindModelArguments(template, templateInitializer);
+                var typeReferences = BindGenericTypeReferences(internalType);
+                var references = BindGenericReferences(template.GenericsDeclaration, typeReferences);
+                var arguments = BindModelArguments(template, templateInitializer, references);
 
                 return new BoundNewExpression(syntax, new BoundTemplateInitializerExpression(template, arguments, references), template);
             }
@@ -214,9 +226,12 @@ namespace Onyx.Binding
 
             return new BoundErrorExpression(syntax);
         }
-        private ImmutableArray<TypeSymbol> BindGenericsReferences(TypeSyntax syntax)
+        private ImmutableArray<TypeSymbol> BindGenericTypeReferences(TypeSyntax syntax)
         {
             var array = ImmutableArray.CreateBuilder<TypeSymbol>();
+            
+            if (syntax.GenericsArguments == null)
+                return ImmutableArray<TypeSymbol>.Empty;
 
             foreach (var generics in syntax.GenericsArguments.GenericsArguments)
             {
@@ -227,7 +242,7 @@ namespace Onyx.Binding
 
             return array.ToImmutable();
         }
-        private ImmutableArray<BoundTemplateInitializer> BindModelArguments(TemplateSymbol template, TemplateInitializerSyntax? syntax)
+        private ImmutableArray<BoundTemplateInitializer> BindModelArguments(TemplateSymbol template, TemplateInitializerSyntax? syntax, Dictionary<string, TypeSymbol> references)
         {
             var array = ImmutableArray.CreateBuilder<BoundTemplateInitializer>();
             var variables = template.GetDeclaredVariables();
@@ -238,9 +253,32 @@ namespace Onyx.Binding
             for (int i = 0; i < variables.Count(); i++)
             {
                 var parameter = syntax.Parameters[i];
-                var type = variables[i].ValueType;
+                var wantedType = variables[i].ValueType;
                 var value = parameter.Value;
-                var expression = type.IsGeneric ? BindExpression(value) : BindExpression(value, type);
+
+                if (wantedType.IsGeneric && !references.ContainsKey(wantedType.Name))
+                {
+                    diagnostics.ReportNoGenericReferences(syntax.Location, wantedType.Name);
+
+                    return ImmutableArray<BoundTemplateInitializer>.Empty;
+                }
+
+                var type = wantedType.IsGeneric
+                    ? references[wantedType.Name]
+                    : wantedType;
+                var expression = BindExpression(value, type);
+
+                /* TODO: Add support for generic type inference */
+
+                /*var expression = BindExpression(value);
+                var type = wantedType.IsGeneric 
+                    ? references.ContainsKey(wantedType.Name)
+                        ? references[wantedType.Name]
+                        : expression.ValueType
+                    : wantedType;
+                var conversion = BindExpression(value, type);*/
+                //var expression = BindExpression(value, type); //type.IsGeneric ? BindExpression(value) : BindExpression(value, type);
+
 
                 array.Add(new BoundTemplateInitializer(expression, parameter.Identifier, type.IsGeneric));
             }

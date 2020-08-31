@@ -1,6 +1,7 @@
 ﻿using Onyx.Binding.Symbols;
 using Onyx.Syntax;
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 
 namespace Onyx.Binding.Nodes.Expressions
@@ -41,9 +42,9 @@ namespace Onyx.Binding.Nodes.Expressions
     {
         public TemplateSymbol Type { get; }
         public ImmutableArray<BoundTemplateInitializer> Arguments { get; }
-        public ImmutableArray<TypeSymbol> References { get; }
+        public Dictionary<string, TypeSymbol> References { get; }
 
-        public BoundTemplateInitializerExpression(TemplateSymbol type, ImmutableArray<BoundTemplateInitializer> arguments, ImmutableArray<TypeSymbol> references)
+        public BoundTemplateInitializerExpression(TemplateSymbol type, ImmutableArray<BoundTemplateInitializer> arguments, Dictionary<string, TypeSymbol> references)
         {
             Type = type;
             Arguments = arguments;

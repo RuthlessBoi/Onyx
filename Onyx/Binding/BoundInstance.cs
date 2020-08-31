@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using Onyx.Binding.Nodes.Expressions;
 using System;
+using System.Text;
+using System.Linq;
 
 namespace Onyx.Binding
 {
@@ -47,6 +49,27 @@ namespace Onyx.Binding
                 functions = new Dictionary<FunctionSymbol, Func<BoundCallExpression, object?>>();
 
             functions[function] = callback;
+        }
+
+        public override string ToString()
+        {
+            var builder = new StringBuilder();
+
+            builder.Append('{');
+
+            if (values.Any())
+            {
+                var pairs = new List<string>();
+
+                foreach (var value in values)
+                    pairs.Add($"{value.Key.Name}: {value.Value}");
+
+                builder.Append(' ').Append(string.Join(", ", pairs));
+            }
+
+            builder.Append(' ').Append('}');
+
+            return builder.ToString();
         }
     }
 }

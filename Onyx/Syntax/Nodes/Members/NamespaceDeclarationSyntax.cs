@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using System.Collections.Immutable;
+﻿using Onyx.Syntax.Nodes.Statements;
+using System.Collections.Generic;
 
 namespace Onyx.Syntax.Nodes.Members
 {
@@ -8,29 +8,20 @@ namespace Onyx.Syntax.Nodes.Members
         public override SyntaxType Type => SyntaxType.NamespaceDeclarationNode;
         public SyntaxToken NamespaceKeyword { get; }
         public NamespaceSyntax Identifier { get; }
-        public SyntaxToken LeftBraceToken { get; }
-        public ImmutableArray<MemberSyntax> Members { get; }
-        public SyntaxToken RightBraceToken { get; }
+        public NamespaceBlockSyntax NamespaceBlock { get; }
 
-        internal NamespaceDeclarationSyntax(SyntaxTree syntaxTree, SyntaxToken namespaceKeyword, NamespaceSyntax identifier, SyntaxToken leftBraceToken, ImmutableArray<MemberSyntax> members, SyntaxToken rightBraceToken) : base(syntaxTree)
+        internal NamespaceDeclarationSyntax(SyntaxTree syntaxTree, SyntaxToken namespaceKeyword, NamespaceSyntax identifier, NamespaceBlockSyntax namespaceBlock) : base(syntaxTree)
         {
             NamespaceKeyword = namespaceKeyword;
             Identifier = identifier;
-            LeftBraceToken = leftBraceToken;
-            Members = members;
-            RightBraceToken = rightBraceToken;
+            NamespaceBlock = namespaceBlock;
         }
 
         public override IEnumerable<SyntaxNode> GetChildren()
         {
             yield return NamespaceKeyword;
             yield return Identifier;
-            yield return LeftBraceToken;
-
-            foreach (var member in Members)
-                yield return member;
-
-            yield return RightBraceToken;
+            yield return NamespaceBlock;
         }
     }
 }

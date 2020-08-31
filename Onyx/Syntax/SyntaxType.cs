@@ -104,6 +104,7 @@
 
         // Statements
         BlockStatement,
+        NamespaceBlockStatement,
         VariableDeclarationStatement,
         IfStatement,
         WhileStatement,

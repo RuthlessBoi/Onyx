@@ -33,5 +33,7 @@ namespace Onyx.Binding
 
             return array;
         }
+
+        public override string ToString() => $"[{string.Join(", ", GetArray())}]";
     }
 }

@@ -8,16 +8,18 @@ namespace Onyx.Syntax.Nodes.Members
         public override SyntaxType Type => SyntaxType.FunctionDeclarationNode;
         public SyntaxToken FunctionKeyword { get; }
         public SyntaxToken Identifier { get; }
+        public GenericsDeclarationSyntax? GenericsDeclaration { get; }
         public SyntaxToken OpenParenthesisToken { get; }
         public SeparatedSyntaxList<ParameterSyntax> Parameters { get; }
         public SyntaxToken CloseParenthesisToken { get; }
         public TypeDeclarationSyntax? TypeDeclaration { get; }
-        public BlockStatementSyntax Body { get; }
+        public BlockSyntax Body { get; }
 
-        internal FunctionDeclarationSyntax(SyntaxTree syntaxTree, SyntaxToken functionKeyword, SyntaxToken identifier, SyntaxToken openParenthesisToken, SeparatedSyntaxList<ParameterSyntax> parameters, SyntaxToken closeParenthesisToken, TypeDeclarationSyntax? typeDeclaration, BlockStatementSyntax body) : base(syntaxTree)
+        internal FunctionDeclarationSyntax(SyntaxTree syntaxTree, SyntaxToken functionKeyword, SyntaxToken identifier, GenericsDeclarationSyntax? genericsDeclaration, SyntaxToken openParenthesisToken, SeparatedSyntaxList<ParameterSyntax> parameters, SyntaxToken closeParenthesisToken, TypeDeclarationSyntax? typeDeclaration, BlockSyntax body) : base(syntaxTree)
         {
             FunctionKeyword = functionKeyword;
             Identifier = identifier;
+            GenericsDeclaration = genericsDeclaration;
             OpenParenthesisToken = openParenthesisToken;
             Parameters = parameters;
             CloseParenthesisToken = closeParenthesisToken;
@@ -29,6 +31,10 @@ namespace Onyx.Syntax.Nodes.Members
         {
             yield return FunctionKeyword;
             yield return Identifier;
+
+            if (GenericsDeclaration != null)
+                yield return GenericsDeclaration;
+
             yield return OpenParenthesisToken;
 
             foreach (var child in Parameters.GetWithSeparators())

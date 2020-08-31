@@ -13,7 +13,18 @@ namespace Onyx.Syntax
 
         public int Count => (nodes.Length + 1) / 2;
 
-        public T this[int index] => (T)nodes[index * 2];
+        public T this[int index]
+        {
+            get
+            {
+                var pos = index * 2;
+
+                if (pos > nodes.Length)
+                    return (T)nodes[0];
+
+                return (T)nodes[index * 2];
+            }
+        }
 
         public SyntaxToken GetSeparator(int index)
         {

@@ -202,6 +202,12 @@ namespace Onyx
 
             ReportError(location, message);
         }
+        public void ReportNoGenericReferences(TextLocation location, string type)
+        {
+            var message = $"Couldn't find a reference for the generic type '{type}'; the type was possibly not set.";
+
+            ReportError(location, message);
+        }
         public void ReportInvalidExpressionStatement(TextLocation location)
         {
             var message = $"Only assignment and call expressions can be used as a statement.";
@@ -272,6 +278,12 @@ namespace Onyx
         public void ReportCalledDeprecatedFunction(TextLocation location, string function)
         {
             var message = $"Use of deprecated function {function}().";
+
+            ReportWarning(location, message);
+        }
+        public void ReportInstantiatedDeprecatedType(TextLocation location, string type)
+        {
+            var message = $"Instantiation of deprecated tye {type}.";
 
             ReportWarning(location, message);
         }

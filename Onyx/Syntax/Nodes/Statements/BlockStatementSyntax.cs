@@ -3,7 +3,7 @@ using System.Collections.Immutable;
 
 namespace Onyx.Syntax.Nodes.Statements
 {
-    public sealed class BlockStatementSyntax : StatementSyntax
+    public sealed class BlockStatementSyntax : BlockSyntax
     {
         public override SyntaxType Type => SyntaxType.BlockStatement;
         public SyntaxToken OpenBraceToken { get; }

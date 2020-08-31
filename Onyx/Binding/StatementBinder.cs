@@ -13,16 +13,20 @@ namespace Onyx.Binding
     {
         private BoundStatement BindErrorStatement(SyntaxNode syntax) => new BoundExpressionStatement(syntax, new BoundErrorExpression(syntax));
         private BoundStatement BindGlobalStatement(StatementSyntax syntax) => BindStatement(syntax, isGlobal: true);
-        private BoundStatement BindBlockStatement(BlockStatementSyntax syntax)
+        private BoundStatement BindBlockStatement(BlockSyntax syntax)
         {
             var statements = ImmutableArray.CreateBuilder<BoundStatement>();
             scope = new BoundScope(scope);
 
-            foreach (var statementSyntax in syntax.Statements)
+            if (syntax is BlockStatementSyntax block)
             {
-                var statement = BindStatement(statementSyntax);
-                statements.Add(statement);
+                foreach (var statementSyntax in block.Statements)
+                {
+                    statements.Add(BindStatement(statementSyntax));
+                }
             }
+            else if (syntax is LambdaStatementSyntax lambda)
+                statements.Add(BindStatement(lambda.Statement));
 
             scope = scope.Parent!;
 

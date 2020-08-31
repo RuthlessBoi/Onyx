@@ -1,0 +1,29 @@
+template Pair<K, V>
+{
+    Key: K,
+    Value: V
+}
+
+template Container
+{
+    id: int,
+    content: string,
+    asPair: Pair<int, string>
+}
+
+function main()
+{
+    let id = 1
+    let content = "test"
+
+    let pair = new KeyValuePair<int, string> { Key = id, Value = content }
+
+    let container = new Container { id = id, content = content, asPair = pair }
+
+    println(pair)
+
+    println(container)
+
+    println(container.id)
+    println(container.content)
+}

@@ -11,7 +11,7 @@ namespace Onyx.Binding
     internal static class BuiltinFunctions
     {
         public static readonly FunctionSymbol Print = new FunctionSymbol("print", ImmutableArray.Create(new ParameterSymbol("text", TypeSymbol.Any, 0)), TypeSymbol.Void);
-        public static readonly FunctionSymbol PrintL = new FunctionSymbol("printl", ImmutableArray.Create(new ParameterSymbol("text", TypeSymbol.Any, 0)), TypeSymbol.Void);
+        public static readonly FunctionSymbol PrintLine = new FunctionSymbol("println", ImmutableArray.Create(new ParameterSymbol("text", TypeSymbol.Any, 0)), TypeSymbol.Void);
         public static readonly FunctionSymbol Read = new FunctionSymbol("read", ImmutableArray<ParameterSymbol>.Empty, TypeSymbol.String);
         public static readonly FunctionSymbol Rnd = new FunctionSymbol("rnd", ImmutableArray.Create(new ParameterSymbol("max", TypeSymbol.Int, 0)), TypeSymbol.Int);
         public static readonly FunctionSymbol GetAnnotations = new FunctionSymbol("getAnnotations", ImmutableArray.Create(new ParameterSymbol("type", TypeSymbol.InternalType, 0)), TypeSymbol.String);
@@ -19,7 +19,7 @@ namespace Onyx.Binding
         internal static readonly Dictionary<FunctionSymbol, Func<BoundCallExpression, object?>> Functions = new Dictionary<FunctionSymbol, Func<BoundCallExpression, object?>>()
         {
             { Print, PrintFunc },
-            { PrintL, PrintLineFunc },
+            { PrintLine, PrintLineFunc },
             { Read, ReadLineFunc },
             { Rnd, RandomFunc },
             { GetAnnotations, GetAnnotationsFunc },
@@ -41,12 +41,7 @@ namespace Onyx.Binding
         {
             var value = Evaluator.EvaluateExpression(node.Arguments[0]);
 
-            if (value is BoundArray ba)
-            {
-                Console.Write($"[{string.Join(", ", ba.GetArray())}]");
-            }
-            else
-                Console.Write(value ?? "undefined");
+            Console.Write(value ?? "undefined");
 
             return null;
         }
@@ -54,10 +49,7 @@ namespace Onyx.Binding
         {
             var value = Evaluator.EvaluateExpression(node.Arguments[0]);
 
-            if (value is BoundArray ba)
-                Console.WriteLine($"[{string.Join(", ", ba.GetArray())}]");
-            else
-                Console.WriteLine(value ?? "undefined");
+            Console.WriteLine(value ?? "undefined");
 
             return null;
         }
@@ -77,7 +69,7 @@ namespace Onyx.Binding
 
             if (type.Type is TemplateSymbol template && template.HasAnnotations())
             {
-                var annotations = template.Annotations();
+                var annotations = template.Annotations;
                 var array = new BoundArray(TypeSymbol.String.Array, annotations.Length);
 
                 var index = 0;

@@ -19,7 +19,7 @@ If a feature/bullet point is prefiex with a `X`, it isn't completed or implement
  - X - `Function[<T...>]` - a type for encapsulation of functions or lambdas
 
 ##### Internal types
- - `void` - a zero-return type; like any C-like language
+ - `void` - a no-return type; like any C-like language
  - `error` as `?` - a type returned by an errored expression
 
 ##### Built-in types

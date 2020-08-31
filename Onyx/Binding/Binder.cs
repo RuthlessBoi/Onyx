@@ -254,7 +254,7 @@ namespace Onyx.Binding
             return result;
         }
 
-        private BoundNamespace BindNamespaceDeclaration(NamespaceDeclarationSyntax syntax) => BoundNamespace.Rebuild(syntax.Identifier, syntax.Members);
+        private BoundNamespace BindNamespaceDeclaration(NamespaceDeclarationSyntax syntax) => BoundNamespace.Rebuild(syntax.Identifier, syntax.NamespaceBlock.Members);
         private IAnnotatable BindAnnotationDeclaration(AnnotationDeclarationSyntax syntax, List<BoundAnnotation>? annotations = null)
         {
             var arguments = ImmutableArray.CreateBuilder<object>();
@@ -455,7 +455,7 @@ namespace Onyx.Binding
             switch (syntax.Type)
             {
                 case SyntaxType.BlockStatement:
-                    return BindBlockStatement((BlockStatementSyntax)syntax);
+                    return BindBlockStatement((BlockSyntax)syntax);
                 case SyntaxType.VariableDeclarationStatement:
                     return BindVariableDeclaration((VariableDeclarationSyntax)syntax);
                 case SyntaxType.IfStatement:
@@ -557,7 +557,7 @@ namespace Onyx.Binding
             if (syntax == null)
                 return null;
 
-            var name = syntax.Identifier.Text;
+            var name = syntax.InternalType.Identifier.Text;
 
             if (generics != null && owner != null)
             {
@@ -567,10 +567,10 @@ namespace Onyx.Binding
                 }
             }
 
-            var type = LookupType(name, syntax.IsArray);
+            var type = LookupType(name, syntax.InternalType.IsArray);
 
             if (type == null)
-                diagnostics.ReportUndefinedType(syntax.Identifier.Location, syntax.Identifier.Text);
+                diagnostics.ReportUndefinedType(syntax.InternalType.Identifier.Location, name);
 
             return type;
         }
@@ -711,6 +711,19 @@ namespace Onyx.Binding
                     return true;
 
             return false;
+        }
+
+        private static Dictionary<string, TypeSymbol> BindGenericReferences(GenericsDeclarationSyntax? generics, ImmutableArray<TypeSymbol> types)
+        {
+            var dict = new Dictionary<string, TypeSymbol>();
+
+            if (!generics.Parameters.Any() || !types.Any())
+                return dict;
+
+            for (int i = 0; i < generics.Parameters.Count; i++)
+                dict.Add(generics.Parameters[i].Identifier.Text, types[i]);
+
+            return dict;
         }
     }
 }

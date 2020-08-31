@@ -168,29 +168,6 @@ namespace Onyx.Syntax
 
             return members.ToImmutable();
         }
-        private ImmutableArray<MemberSyntax> ParseNamespaceMembers()
-        {
-            var members = ImmutableArray.CreateBuilder<MemberSyntax>();
-
-            while (Current.Type != SyntaxType.EoFToken && Current.Type != SyntaxType.RightBraceToken )
-            {
-                var startToken = Current;
-
-                members.Add(ParseNamespaceMember());
-
-                // If ParseMember() did not consume any tokens,
-                // we need to skip the current token and continue
-                // in order to avoid an infinite loop.
-                //
-                // We don't need to report an error, because we'll
-                // already tried to parse an expression statement
-                // and reported one.
-                if (Current == startToken)
-                    NextToken();
-            }
-
-            return members.ToImmutable();
-        }
         private MemberSyntax ParseMember()
         {
             if (Current.Type == SyntaxType.NamespaceKeyword)
@@ -221,33 +198,49 @@ namespace Onyx.Syntax
         {
             var namespaceKeyword = MatchToken(SyntaxType.NamespaceKeyword);
             var identifier = ParseNamespace();
+            var block = ParseNamespaceBlock();
+
+            return new NamespaceDeclarationSyntax(syntaxTree, namespaceKeyword, identifier, block);
+        }
+        private NamespaceBlockSyntax ParseNamespaceBlock()
+        {
+            var members = ImmutableArray.CreateBuilder<MemberSyntax>();
+
             var leftBraceToken = MatchToken(SyntaxType.LeftBraceToken);
-            var members = ParseNamespaceMembers();
+
+            while (Current.Type != SyntaxType.EoFToken && Current.Type != SyntaxType.RightBraceToken)
+            {
+                var startToken = Current;
+
+                members.Add(ParseNamespaceMember());
+
+                // If ParseStatement() did not consume any tokens,
+                // we need to skip the current token and continue
+                // in order to avoid an infinite loop.
+                //
+                // We don't need to report an error, because we'll
+                // already tried to parse an expression statement
+                // and reported one.
+                if (Current == startToken)
+                    NextToken();
+            }
+
             var rightBraceToken = MatchToken(SyntaxType.RightBraceToken);
 
-            return new NamespaceDeclarationSyntax(syntaxTree, namespaceKeyword, identifier, leftBraceToken, members, rightBraceToken);
+            return new NamespaceBlockSyntax(syntaxTree, leftBraceToken, members.ToImmutable(), rightBraceToken);
         }
         private MemberSyntax ParseFunctionDeclaration()
         {
             var functionKeyword = MatchToken(SyntaxType.FunctionKeyword);
             var identifier = MatchToken(SyntaxType.IdentifierToken);
+            var genericsDeclaration = ParseOptionalGenericsDeclaration();
             var openParenthesisToken = MatchToken(SyntaxType.LeftParenthesisToken);
             var parameters = ParseParameterList();
             var closeParenthesisToken = MatchToken(SyntaxType.RightParenthesisToken);
             var type = ParseOptionalTypeClause();
+            var body = ParseBlockOrLambdaStatement(type == null);
 
-            BlockStatementSyntax body;
-
-            // Allow parsing of single-statement function declarations
-            if (Current.Type == SyntaxType.EqualsGreaterToken)
-            {
-                MatchToken(SyntaxType.EqualsGreaterToken);
-                body = ParseLambdaStatement(type == null);
-            } 
-            else
-                body = ParseBlockStatement();
-
-            return new FunctionDeclarationSyntax(syntaxTree, functionKeyword, identifier, openParenthesisToken, parameters, closeParenthesisToken, type, body);
+            return new FunctionDeclarationSyntax(syntaxTree, functionKeyword, identifier, genericsDeclaration, openParenthesisToken, parameters, closeParenthesisToken, type, body);
         }
         private MemberSyntax ParseTemplateDeclaration()
         {
@@ -315,13 +308,14 @@ namespace Onyx.Syntax
             var parseNextParameter = true;
             while (parseNextParameter && Current.Type != SyntaxType.RightBraceToken && Current.Type != SyntaxType.EoFToken)
             {
-                var parameter = ParseTemplateParameter();
-                nodesAndSeparators.Add(parameter);
+                nodesAndSeparators.Add(ParseTemplateParameter());
 
                 if (Current.Type == SyntaxType.CommaToken)
                 {
-                    var comma = MatchToken(SyntaxType.CommaToken);
-                    nodesAndSeparators.Add(comma);
+                    nodesAndSeparators.Add(MatchToken(SyntaxType.CommaToken));
+
+                    if (Current.Type != SyntaxType.ReadOnlyKeyword && Current.Type != SyntaxType.IdentifierToken)
+                        parseNextParameter = false;
                 }
                 else
                     parseNextParameter = false;
@@ -331,11 +325,7 @@ namespace Onyx.Syntax
         }
         private TemplateParameterSyntax ParseTemplateParameter()
         {
-            SyntaxToken? readOnlyToken = null;
-
-            if (Peek(0).Type == SyntaxType.ReadOnlyKeyword)
-                readOnlyToken = NextToken();
-
+            var readOnlyToken = MatchOptional(SyntaxType.ReadOnlyKeyword);
             var identifier = MatchToken(SyntaxType.IdentifierToken);
             var type = ParseTypeClause();
 
@@ -374,6 +364,13 @@ namespace Onyx.Syntax
                     return ParseExpressionStatement();
             }
         }
+        private BlockSyntax ParseBlockOrLambdaStatement(bool isVoid)
+        {
+            if (Current.Type == SyntaxType.LeftBraceToken)
+                return ParseBlockStatement();
+
+            return ParseLambdaStatement(isVoid);
+        }
         private BlockStatementSyntax ParseBlockStatement()
         {
             var statements = ImmutableArray.CreateBuilder<StatementSyntax>();
@@ -402,18 +399,18 @@ namespace Onyx.Syntax
 
             return new BlockStatementSyntax(syntaxTree, openBraceToken, statements.ToImmutable(), closeBraceToken);
         }
-        private BlockStatementSyntax ParseLambdaStatement(bool isVoid)
+        private LambdaStatementSyntax ParseLambdaStatement(bool isVoid)
         {
-            var statements = ImmutableArray.CreateBuilder<StatementSyntax>();
+            var equalsGreaterToken = MatchToken(SyntaxType.EqualsGreaterToken);
+
+            StatementSyntax statement;
 
             if (Current.Type != SyntaxType.EoFToken && !isVoid)
-                statements.Add(new ReturnStatementSyntax(syntaxTree, EmptyToken(SyntaxType.ReturnKeyword), ParseExpression()));
+                statement = new ReturnStatementSyntax(syntaxTree, EmptyToken(SyntaxType.ReturnKeyword), ParseExpression());
             else
-                statements.Add(ParseExpressionStatement());
+                statement = ParseExpressionStatement();
 
-            //MatchToken(SyntaxType.SemiColonToken);
-
-            return new BlockStatementSyntax(syntaxTree, EmptyToken(SyntaxType.LeftBraceToken), statements.ToImmutable(), EmptyToken(SyntaxType.RightBraceToken));
+            return new LambdaStatementSyntax(syntaxTree, equalsGreaterToken, statement);
         }
         private StatementSyntax ParseVariableDeclaration()
         {
@@ -436,11 +433,9 @@ namespace Onyx.Syntax
         private TypeDeclarationSyntax ParseTypeClause()
         {
             var colonToken = MatchToken(SyntaxType.ColonToken);
-            var identifier = MatchToken(SyntaxType.IdentifierToken);
-            var leftBracketToken = MatchOptional(SyntaxType.LeftBracketToken);
-            var rightBracketToken = MatchOptional(SyntaxType.RightBracketToken);
+            var type = ParseType();
 
-            return new TypeDeclarationSyntax(syntaxTree, colonToken, identifier, leftBracketToken, rightBracketToken);
+            return new TypeDeclarationSyntax(syntaxTree, colonToken, type);
         }
         private StatementSyntax ParseIfStatement()
         {

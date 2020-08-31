@@ -6,29 +6,18 @@ namespace Onyx.Syntax.Nodes
     {
         public override SyntaxType Type => SyntaxType.TypeDelcarationNode;
         public SyntaxToken ColonToken { get; }
-        public SyntaxToken Identifier { get; }
-        public SyntaxToken? LeftBracketToken { get; }
-        public SyntaxToken? RightBracketToken { get; }
-        public bool IsArray => LeftBracketToken != null && RightBracketToken != null;
+        public TypeSyntax InternalType { get; }
 
-        internal TypeDeclarationSyntax(SyntaxTree syntaxTree, SyntaxToken colonToken, SyntaxToken identifier, SyntaxToken? leftBracketToken, SyntaxToken? rightBracketToken) : base(syntaxTree)
+        internal TypeDeclarationSyntax(SyntaxTree syntaxTree, SyntaxToken colonToken, TypeSyntax internalType) : base(syntaxTree)
         {
             ColonToken = colonToken;
-            Identifier = identifier;
-            LeftBracketToken = leftBracketToken;
-            RightBracketToken = rightBracketToken;
+            InternalType = internalType;
         }
 
         public override IEnumerable<SyntaxNode> GetChildren()
         {
             yield return ColonToken;
-            yield return Identifier;
-
-            if (LeftBracketToken != null)
-                yield return LeftBracketToken;
-
-            if (RightBracketToken != null)
-                yield return RightBracketToken;
+            yield return InternalType;
         }
     }
 }

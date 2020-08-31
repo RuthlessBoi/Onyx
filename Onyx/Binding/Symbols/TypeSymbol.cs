@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace Onyx.Binding.Symbols
 {
-    public class TypeSymbol : Symbol, IScoped
+    public class TypeSymbol : Symbol, IScoped, IAnnotatable
     {
         public static readonly TypeSymbol Error = new TypeSymbol("?", null);
         public static readonly TypeSymbol Void = new TypeSymbol("void", null);
@@ -39,8 +39,11 @@ namespace Onyx.Binding.Symbols
         public ArrayType Array { get; }
         public bool IsGeneric => this is GenericsSymbol;
         public bool IsArray => this is ArrayType;
+        public ImmutableArray<BoundAnnotation> Annotations => annotations.ToImmutableArray();
 
         protected Dictionary<string, Symbol>? symbols;
+
+        private readonly List<BoundAnnotation> annotations;
 
         public TypeSymbol(string name, object? defaultValue = null, Type? internalType = null, Dictionary<string, Symbol>? symbols = null) : base(name)
         {
@@ -48,11 +51,59 @@ namespace Onyx.Binding.Symbols
             Default = defaultValue;
             ContainedType = new TypeContainer(internalType ?? typeof(object), this);
 
+            annotations = new List<BoundAnnotation>();
+
             if (!IsArray)
                 Array = new ArrayType(this, name, ArraySymbols);
         }
 
         public override string ToString() => Name;
+
+        public void Annotate(BoundAnnotation? annotation)
+        {
+            if (annotation == null)
+                return;
+
+            annotations.AddRange(annotation.Annotations);
+            annotations.Add(annotation);
+        }
+        public void Annotate(IEnumerable<BoundAnnotation> annotations)
+        {
+            foreach (var annotation in annotations)
+                Annotate(annotation);
+        }
+        internal bool HasAnnotations() => annotations.Any();
+        internal bool HasAnnotation(string name, out BoundAnnotation value)
+        {
+            foreach (var annotation in annotations)
+            {
+                if (annotation.Name == name)
+                {
+                    value = annotation;
+                    return true;
+                }
+            }
+
+            value = null;
+            return false;
+        }
+        internal bool HasAnnotation(string name)
+        {
+            foreach (var annotation in annotations)
+            {
+                if (annotation.Name == name)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        internal bool HasPragma(string pragma) =>
+            HasAnnotation("pragma", out BoundAnnotation annotation) &&
+            annotation.Values.Length > 0 &&
+            annotation.Values[0] is string annotationPragma &&
+            annotationPragma == pragma;
 
         public bool TryDeclareVariable(VariableSymbol variable) => TryDeclareSymbol(variable);
         public bool TryDeclareFunction(FunctionSymbol function) => TryDeclareSymbol(function);
