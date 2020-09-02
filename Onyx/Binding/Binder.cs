@@ -756,5 +756,21 @@ namespace Onyx.Binding
 
             return dict;
         }
+        internal static TypeSymbol? AssumeType(object? value)
+        {
+            if (value == null)
+                return TypeSymbol.Error;
+
+            if (value is string)
+                return TypeSymbol.String;
+            else if (value is int)
+                return TypeSymbol.Int;
+            else if (value is bool)
+                return TypeSymbol.Bool;
+            else if (value is char)
+                return TypeSymbol.Char;
+            else
+                return TypeSymbol.Any;
+        }
     }
 }

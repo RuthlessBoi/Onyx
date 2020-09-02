@@ -8,11 +8,11 @@ namespace Onyx.Binding
         public TypeSymbol Type { get; }
         public OnyxValue OnyxValue { get; }
 
-        public BoundConstant(object value, TypeSymbol type)
+        public BoundConstant(object value, TypeSymbol? type = null)
         {
             Value = value;
-            Type = type;
-            OnyxValue = new OnyxValue(value, type);
+            Type = type ?? Binder.AssumeType(value);
+            OnyxValue = new OnyxValue(value, Type);
         }
     }
 }

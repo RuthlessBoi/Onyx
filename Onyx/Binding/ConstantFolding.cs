@@ -41,7 +41,7 @@ namespace Onyx.Binding
                 if (leftConstant != null && !(bool)leftConstant.Value ||
                     rightConstant != null && !(bool)rightConstant.Value)
                 {
-                    return new BoundConstant(false, TypeSymbol.Bool);
+                    return new BoundConstant(false);
                 }
             }
 
@@ -50,7 +50,7 @@ namespace Onyx.Binding
                 if (leftConstant != null && (bool)leftConstant.Value ||
                     rightConstant != null && (bool)rightConstant.Value)
                 {
-                    return new BoundConstant(true, TypeSymbol.Bool);
+                    return new BoundConstant(true);
                 }
             }
 
@@ -64,46 +64,46 @@ namespace Onyx.Binding
             {
                 case BoundBinaryOperatorType.Addition:
                     if (left.ValueType == TypeSymbol.Int)
-                        return new BoundConstant((int)l + (int)r, TypeSymbol.Int);
+                        return new BoundConstant((int)l + (int)r);
                     else
-                        return new BoundConstant((string)l + (string)r, TypeSymbol.String);
+                        return new BoundConstant((string)l + (string)r);
                 case BoundBinaryOperatorType.Subtraction:
-                    return new BoundConstant((int)l - (int)r, TypeSymbol.Int);
+                    return new BoundConstant((int)l - (int)r);
                 case BoundBinaryOperatorType.Multiplication:
-                    return new BoundConstant((int)l * (int)r, TypeSymbol.Int);
+                    return new BoundConstant((int)l * (int)r);
                 case BoundBinaryOperatorType.Division:
-                    return new BoundConstant((int)l / (int)r, TypeSymbol.Int);
+                    return new BoundConstant((int)l / (int)r);
                 case BoundBinaryOperatorType.BitwiseAnd:
                     if (left.ValueType == TypeSymbol.Int)
-                        return new BoundConstant((int)l & (int)r, TypeSymbol.Int);
+                        return new BoundConstant((int)l & (int)r);
                     else
-                        return new BoundConstant((bool)l & (bool)r, TypeSymbol.Bool);
+                        return new BoundConstant((bool)l & (bool)r);
                 case BoundBinaryOperatorType.BitwiseOr:
                     if (left.ValueType == TypeSymbol.Int)
-                        return new BoundConstant((int)l | (int)r, TypeSymbol.Int);
+                        return new BoundConstant((int)l | (int)r);
                     else
-                        return new BoundConstant((bool)l | (bool)r, TypeSymbol.Bool);
+                        return new BoundConstant((bool)l | (bool)r);
                 case BoundBinaryOperatorType.BitwiseXor:
                     if (left.ValueType == TypeSymbol.Int)
-                        return new BoundConstant((int)l ^ (int)r, TypeSymbol.Int);
+                        return new BoundConstant((int)l ^ (int)r);
                     else
-                        return new BoundConstant((bool)l ^ (bool)r, TypeSymbol.Bool);
+                        return new BoundConstant((bool)l ^ (bool)r);
                 case BoundBinaryOperatorType.LogicalAnd:
-                    return new BoundConstant((bool)l && (bool)r, TypeSymbol.Bool);
+                    return new BoundConstant((bool)l && (bool)r);
                 case BoundBinaryOperatorType.LogicalOr:
-                    return new BoundConstant((bool)l || (bool)r, TypeSymbol.Bool);
+                    return new BoundConstant((bool)l || (bool)r);
                 case BoundBinaryOperatorType.Equals:
-                    return new BoundConstant(Equals(l, r), TypeSymbol.Bool);
+                    return new BoundConstant(Equals(l, r));
                 case BoundBinaryOperatorType.NotEquals:
-                    return new BoundConstant(!Equals(l, r), TypeSymbol.Bool);
+                    return new BoundConstant(!Equals(l, r));
                 case BoundBinaryOperatorType.Less:
-                    return new BoundConstant((int)l < (int)r, TypeSymbol.Int);
+                    return new BoundConstant((int)l < (int)r);
                 case BoundBinaryOperatorType.LessOrEquals:
-                    return new BoundConstant((int)l <= (int)r, TypeSymbol.Int);
+                    return new BoundConstant((int)l <= (int)r);
                 case BoundBinaryOperatorType.Greater:
-                    return new BoundConstant((int)l > (int)r, TypeSymbol.Int);
+                    return new BoundConstant((int)l > (int)r);
                 case BoundBinaryOperatorType.GreaterOrEquals:
-                    return new BoundConstant((int)l >= (int)r, TypeSymbol.Int);
+                    return new BoundConstant((int)l >= (int)r);
                 default:
                     throw new Exception($"Unexpected binary operator {op.Type}");
             }
