@@ -25,6 +25,19 @@ namespace Onyx.Binding
 
             return new BoundLiteralExpression(syntax, type.ContainedType);
         }
+        private BoundExpression BindTypeExpression(TypeExpressionSyntax syntax)
+        {
+            var type = LookupType(syntax.InternalType.Identifier.Text, syntax.InternalType.IsArray);
+
+            if (type == null)
+            {
+                diagnostics.ReportUndefinedType(syntax.InternalType.Identifier.Location, syntax.InternalType.Identifier.Text);
+
+                return new BoundErrorExpression(syntax);
+            }
+
+            return new BoundLiteralExpression(syntax, type.ContainedType);
+        }
         private BoundExpression BindNameExpression(NameExpressionSyntax syntax)
         {
             if (syntax.IdentifierToken.IsMissing)
@@ -39,20 +52,6 @@ namespace Onyx.Binding
                 return new BoundErrorExpression(syntax);
 
             return new BoundVariableExpression(syntax, variable);
-        }
-        private BoundExpression BindDotExpression(DotExpressionSyntax syntax)
-        {
-            if (syntax.LeftToken.IsMissing)
-                // This means the token was inserted by the parser. We already
-                // reported error so we can just return an error expression.
-                return new BoundErrorExpression(syntax);
-
-            var reference = BindDotReference(syntax);
-
-            if (reference == null)
-                return new BoundErrorExpression(syntax);
-
-            return new BoundDotExpression(syntax, reference);
         }
         private BoundExpression BindAssignmentExpression(AssignmentExpressionSyntax syntax)
         {
@@ -109,7 +108,8 @@ namespace Onyx.Binding
         private BoundExpression BindBinaryExpression(BinaryExpressionSyntax syntax)
         {
             var boundLeft = BindExpression(syntax.Left);
-            var boundRight = BindExpression(syntax.Right);
+            var valueType = IsMemberAccess(syntax.OperatorToken.Type, boundLeft?.ValueType);
+            var boundRight = BindNameOrExpression(syntax.Right, valueType);
 
             if (boundLeft.ValueType == TypeSymbol.Error || boundRight.ValueType == TypeSymbol.Error)
                 return new BoundErrorExpression(syntax);
@@ -123,7 +123,41 @@ namespace Onyx.Binding
                 return new BoundErrorExpression(syntax);
             }
 
-            return new BoundBinaryExpression(syntax, boundLeft, boundOperator, boundRight);
+            return new BoundBinaryExpression(syntax, boundLeft, boundOperator, boundRight, IsMemberAccess(syntax.OperatorToken.Type, boundRight.ValueType));
+        }
+        private BoundExpression BindNameOrExpression(ExpressionSyntax syntax, TypeSymbol? symbol)
+        {
+            if (syntax == null || symbol == null)
+                return new BoundErrorExpression(syntax);
+
+            if (syntax is NameExpressionSyntax name)
+            {
+                var variable = BindSymbolReference(symbol, name);
+
+                if (variable == null)
+                {
+                    diagnostics.ReportUndefinedVariable(name.IdentifierToken.Location, name.IdentifierToken.Text);
+
+                    return new BoundErrorExpression(syntax);
+                }
+
+                return new BoundVariableExpression(name, variable);
+            }
+            else if (syntax is CallExpressionSyntax call)
+            {
+                var function = BindFunctionReference(symbol, call);
+
+                if (function == null)
+                {
+                    diagnostics.ReportUndefinedFunction(call.IdentifierToken.Location, call.IdentifierToken.Text);
+
+                    return new BoundErrorExpression(syntax);
+                }
+
+                return BindCallExpression(call, function);
+            }
+
+            return BindExpression(syntax);
         }
         private BoundExpression BindCallExpression(CallExpressionSyntax syntax, FunctionSymbol? known = null)
         {
@@ -182,13 +216,28 @@ namespace Onyx.Binding
                 return new BoundErrorExpression(syntax);
             }
 
+            var typeReferences = BindGenericTypeReferences(syntax.GenericArguments);
+            var references = BindGenericReferences(function.Declaration?.GenericsDeclaration, typeReferences);
+
             for (var i = 0; i < syntax.Arguments.Count; i++)
             {
                 var argumentLocation = syntax.Arguments[i].Location;
                 var argument = boundArguments[i];
                 var parameter = function.Parameters[i];
+                var wantedType = parameter.ValueType;
 
-                boundArguments[i] = BindConversion(argumentLocation, argument, parameter.ValueType);
+                if (wantedType.IsGeneric && !references.ContainsKey(wantedType.Name))
+                {
+                    diagnostics.ReportNoGenericReferences(syntax.Location, wantedType.Name);
+
+                    return new BoundErrorExpression(syntax);
+                }
+
+                var boundType = wantedType.IsGeneric
+                    ? references[wantedType.Name]
+                    : wantedType;
+
+                boundArguments[i] = BindConversion(argumentLocation, argument, boundType);
             }
 
             if (function.HasAnnotation("deprecated"))
@@ -213,7 +262,7 @@ namespace Onyx.Binding
 
             if (type is TemplateSymbol template && syntax.Initializer is TemplateInitializerSyntax templateInitializer)
             {
-                var typeReferences = BindGenericTypeReferences(internalType);
+                var typeReferences = BindGenericTypeReferences(internalType.GenericsArguments);
                 var references = BindGenericReferences(template.GenericsDeclaration, typeReferences);
                 var arguments = BindModelArguments(template, templateInitializer, references);
 
@@ -226,14 +275,14 @@ namespace Onyx.Binding
 
             return new BoundErrorExpression(syntax);
         }
-        private ImmutableArray<TypeSymbol> BindGenericTypeReferences(TypeSyntax syntax)
+        private ImmutableArray<TypeSymbol> BindGenericTypeReferences(GenericsArgumentsSyntax? syntax)
         {
             var array = ImmutableArray.CreateBuilder<TypeSymbol>();
             
-            if (syntax.GenericsArguments == null)
+            if (syntax == null)
                 return ImmutableArray<TypeSymbol>.Empty;
 
-            foreach (var generics in syntax.GenericsArguments.GenericsArguments)
+            foreach (var generics in syntax.GenericsArguments)
             {
                 var type = LookupType(generics.Identifier.Text, generics.IsArray);
 
@@ -294,5 +343,10 @@ namespace Onyx.Binding
 
             return array.ToImmutable();
         }
+        private TypeSymbol IsMemberAccess(SyntaxType type, TypeSymbol symbol) =>
+            type == SyntaxType.DotToken ||
+            type == SyntaxType.QuestionMarkDotToken ?
+                symbol :
+                null;
     }
 }

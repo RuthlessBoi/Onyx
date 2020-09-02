@@ -18,5 +18,7 @@
         Greater,
         GreaterOrEquals,
         Is,
+        Dot,
+        ConditionalDot,
     }
 }

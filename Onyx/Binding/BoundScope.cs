@@ -17,6 +17,7 @@ namespace Onyx.Binding
         public BoundScope(BoundScope? parent)
         {
             Parent = parent;
+            namespaces = new List<BoundNamespace>();
 
             if (Parent != null)
             {

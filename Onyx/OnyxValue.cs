@@ -25,8 +25,8 @@ namespace Onyx
 
         public OnyxValue? Get(VariableSymbol variable)
         {
-            if (Value is BoundTemplate bm)
-                return bm.Get(variable);
+            if (Value is BoundTemplate template)
+                return template.Get(variable);
 
             if (values == null)
                 values = new Dictionary<VariableSymbol, OnyxValue>();
@@ -38,6 +38,13 @@ namespace Onyx
         }
         public void Assign(VariableSymbol variable, OnyxValue value)
         {
+            if (Value is BoundTemplate template)
+            {
+                template.Assign(variable, value);
+
+                return;
+            }
+
             if (values == null)
                 values = new Dictionary<VariableSymbol, OnyxValue>();
 

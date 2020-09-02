@@ -129,8 +129,6 @@ namespace Onyx
                     return EvaluateVariableExpression((BoundVariableExpression)node);
                 case BoundNodeType.NewExpression:
                     return EvaluateNewExpression((BoundNewExpression)node);
-                case BoundNodeType.DotExpression:
-                    return EvaluateDotExpression((BoundDotExpression)node);
                 case BoundNodeType.AssignmentExpression:
                     return EvaluateAssignmentExpression((BoundAssignmentExpression)node);
                 case BoundNodeType.UnaryExpression:
@@ -147,25 +145,25 @@ namespace Onyx
                     throw new Exception($"Unexpected node {node.Type}");
             }
         }
-        private static object EvaluateConstantExpression(BoundExpression n)
+        private static OnyxValue EvaluateConstantExpression(BoundExpression n)
         {
             Debug.Assert(n.ConstantValue != null);
 
-            return n.ConstantValue.Value;
+            return n.ConstantValue.OnyxValue;
         }
-        private object EvaluateVariableExpression(BoundVariableExpression v)
+        private OnyxValue EvaluateVariableExpression(BoundVariableExpression v)
         {
             if (v.Variable.Type == SymbolType.GlobalVariable)
-                return globals[v.Variable].Value;
+                return globals[v.Variable];
             else
             {
                 var locals = this.locals.Peek();
                 var value = locals[v.Variable];
 
-                if (v.Syntax is NameExpressionSyntax nes && nes.Modifier is IndexerModifierSyntax ims && value.Value is BoundArray ba)
-                    return ba.Get((int)ims.IndexToken.Value);
+                /*if (v.Syntax is NameExpressionSyntax nes && nes.Modifier is IndexerModifierSyntax ims && value.Value is BoundArray ba)
+                    return ba.Get((int)ims.IndexToken.Value);*/
 
-                return value.Value;
+                return value;
             }
         }
         private object EvaluateNewExpression(BoundNewExpression n)
@@ -195,7 +193,6 @@ namespace Onyx
 
             return array.ToImmutable();
         }
-        private object EvaluateDotExpression(BoundDotExpression d) => EvaluateVariableChain(d.Chain);
         private object EvaluateVariableChain(BoundVariableChain chain, OnyxValue? onxyValue = null)
         {
             var locals = this.locals.Peek();
@@ -253,7 +250,7 @@ namespace Onyx
         private object EvaluateBinaryExpression(BoundBinaryExpression b)
         {
             var left = EvaluateExpression(b.Left);
-            var right = EvaluateExpression(b.Right);
+            var right = EvaluteRightExpression(b);
 
             Debug.Assert(left != null && right != null);
 
@@ -303,9 +300,26 @@ namespace Onyx
                     return (int)left >= (int)right;
                 case BoundBinaryOperatorType.Is:
                     return left.GetType() == (right as TypeContainer).InternalType;
+                case BoundBinaryOperatorType.Dot:
+                    if (b.Right is BoundCallExpression call)
+                        return (left as OnyxValue).Get(call.Function).Invoke(call);
+                    else
+                        return (left as OnyxValue).Get((b.Right as BoundVariableExpression).Variable);
+                case BoundBinaryOperatorType.ConditionalDot:
+                    // TODO: Add the conditional member access operator
+                    return null;
                 default:
                     throw new Exception($"Unexpected binary operator {b.Op}");
             }
+        }
+        private object EvaluteRightExpression(BoundBinaryExpression b)
+        {
+            var right = b.Right;
+
+            if (b.Op.Type == BoundBinaryOperatorType.Dot)
+                return right;
+
+            return EvaluateExpression(right);
         }
         private object? EvaluateCallExpression(BoundCallExpression node)
         {
@@ -314,11 +328,14 @@ namespace Onyx
             else
             {
                 var locals = new Dictionary<VariableSymbol, OnyxValue>();
+
                 for (int i = 0; i < node.Arguments.Length; i++)
                 {
                     var parameter = node.Function.Parameters[i];
                     var value = EvaluateExpression(node.Arguments[i]);
+
                     Debug.Assert(value != null);
+
                     locals.Add(parameter, NewValue(parameter.ValueType, value));
                 }
 

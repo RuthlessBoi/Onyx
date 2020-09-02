@@ -23,6 +23,12 @@ namespace Onyx.Syntax
                     return SyntaxType.FunctionKeyword;
                 case "template":
                     return SyntaxType.TemplateKeyword;
+                case "class":
+                    return SyntaxType.ClassKeyword;
+                case "abstract":
+                    return SyntaxType.AbstractKeyword;
+                case "constructor":
+                    return SyntaxType.ConstructorKeyword;
                 case "import":
                     return SyntaxType.ImportKeyword;
                 case "is":
@@ -120,6 +126,8 @@ namespace Onyx.Syntax
                     return ":";
                 case SyntaxType.CommaToken:
                     return ",";
+                case SyntaxType.DotToken:
+                    return ".";
                 case SyntaxType.BreakKeyword:
                     return "break";
                 case SyntaxType.ContinueKeyword:
@@ -136,6 +144,12 @@ namespace Onyx.Syntax
                     return "model";
                 case SyntaxType.ImportKeyword:
                     return "import";
+                case SyntaxType.ClassKeyword:
+                    return "class";
+                case SyntaxType.AbstractKeyword:
+                    return "abstract";
+                case SyntaxType.ConstructorKeyword:
+                    return "constructor";
                 case SyntaxType.IfKeyword:
                     return "if";
                 case SyntaxType.IsKeyword:
@@ -182,6 +196,7 @@ namespace Onyx.Syntax
         {
             switch (type)
             {
+                case SyntaxType.DotToken:
                 case SyntaxType.IsKeyword:
                     return 6;
                 case SyntaxType.StarToken:
@@ -220,6 +235,7 @@ namespace Onyx.Syntax
         public static IEnumerable<SyntaxType> GetBinaryOperatorKinds()
         {
             var kinds = (SyntaxType[])Enum.GetValues(typeof(SyntaxType));
+
             foreach (var kind in kinds)
             {
                 if (GetBinaryOperatorPrecedence(kind) > 0)

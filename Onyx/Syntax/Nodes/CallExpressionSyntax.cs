@@ -5,12 +5,14 @@ namespace Onyx.Syntax.Nodes
     public sealed class CallExpressionSyntax : IdentifiableExpressionSyntax
     {
         public override SyntaxType Type => SyntaxType.CallExpression;
+        public GenericsArgumentsSyntax? GenericArguments { get; }
         public SyntaxToken OpenParenthesisToken { get; }
         public SeparatedSyntaxList<ExpressionSyntax> Arguments { get; }
         public SyntaxToken CloseParenthesisToken { get; }
 
-        internal CallExpressionSyntax(SyntaxTree syntaxTree, SyntaxToken identifierToken, SyntaxToken openParenthesisToken, SeparatedSyntaxList<ExpressionSyntax> arguments, SyntaxToken closeParenthesisToken, IdentifiableExpressionSyntax? child) : base(syntaxTree, identifierToken, child)
+        internal CallExpressionSyntax(SyntaxTree syntaxTree, SyntaxToken identifierToken, GenericsArgumentsSyntax? genericArguments, SyntaxToken openParenthesisToken, SeparatedSyntaxList<ExpressionSyntax> arguments, SyntaxToken closeParenthesisToken, IdentifiableExpressionSyntax? child) : base(syntaxTree, identifierToken, child)
         {
+            GenericArguments = genericArguments;
             OpenParenthesisToken = openParenthesisToken;
             Arguments = arguments;
             CloseParenthesisToken = closeParenthesisToken;
@@ -19,6 +21,10 @@ namespace Onyx.Syntax.Nodes
         public override IEnumerable<SyntaxNode> GetChildren()
         {
             yield return IdentifierToken;
+
+            if (GenericArguments != null)
+                yield return GenericArguments;
+
             yield return OpenParenthesisToken;
 
             foreach (var argument in Arguments)

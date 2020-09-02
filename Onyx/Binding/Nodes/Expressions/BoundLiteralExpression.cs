@@ -32,7 +32,7 @@ namespace Onyx.Binding.Nodes.Expressions
             else
                 throw new Exception($"Unexpected literal '{value}' of type {value.GetType()}");
 
-            ConstantValue = new BoundConstant(value);
+            ConstantValue = new BoundConstant(value, ValueType);
         }
     }
 

@@ -20,7 +20,6 @@
         ErrorExpression,
         LiteralExpression,
         VariableExpression,
-        DotExpression,
         AssignmentExpression,
         CompoundAssignmentExpression,
         UnaryExpression,

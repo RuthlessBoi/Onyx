@@ -202,7 +202,19 @@ namespace Onyx.Syntax
                     break;
                 case '.':
                     position++;
-                    type = SyntaxType.DotToken;
+                    if (Current != '.')
+                        type = SyntaxType.DotToken;
+                    else
+                        Eat(SyntaxType.DotDotToken);
+                    break;
+                case '?':
+                    position++;
+                    if (Current == '?')
+                        Eat(SyntaxType.QuestionMarkQuestionMarkToken);
+                    else if (Current == '.')
+                        Eat(SyntaxType.QuestionMarkDotToken);
+                    else
+                        type = SyntaxType.QuestionMarkToken;
                     break;
                 case '"':
                     ReadString();

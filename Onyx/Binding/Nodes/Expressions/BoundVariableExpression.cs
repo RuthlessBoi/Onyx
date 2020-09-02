@@ -1,5 +1,6 @@
 ﻿using Onyx.Binding.Symbols;
 using Onyx.Syntax;
+using System;
 
 namespace Onyx.Binding.Nodes.Expressions
 {
@@ -10,6 +11,11 @@ namespace Onyx.Binding.Nodes.Expressions
         public VariableSymbol Variable { get; }
         public override BoundConstant? ConstantValue => Variable.Constant;
 
-        public BoundVariableExpression(SyntaxNode syntax, VariableSymbol variable) : base(syntax) => Variable = variable;
+        public BoundVariableExpression(SyntaxNode syntax, VariableSymbol variable) : base(syntax)
+        {
+            Variable = variable;
+
+            //Console.WriteLine($"Variable: {variable?.Name ?? "Null"}");
+        }
     }
 }

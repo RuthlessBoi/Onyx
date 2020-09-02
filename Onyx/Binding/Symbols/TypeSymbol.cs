@@ -39,6 +39,8 @@ namespace Onyx.Binding.Symbols
         public ArrayType Array { get; }
         public bool IsGeneric => this is GenericsSymbol;
         public bool IsArray => this is ArrayType;
+        public bool IsTemplate => this is TemplateSymbol;
+        //public bool IsClass => this is ClassSymbol;
         public ImmutableArray<BoundAnnotation> Annotations => annotations.ToImmutableArray();
 
         protected Dictionary<string, Symbol>? symbols;

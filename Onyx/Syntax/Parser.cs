@@ -174,6 +174,8 @@ namespace Onyx.Syntax
                 return ParseNamespaceDeclaration();
             else if (Current.Type == SyntaxType.FunctionKeyword)
                 return ParseFunctionDeclaration();
+            else if (Current.Type == SyntaxType.ClassKeyword)
+                return ParseClassDeclaration();
             else if (Current.Type == SyntaxType.TemplateKeyword)
                 return ParseTemplateDeclaration();
             else if (Current.Type == SyntaxType.ImportKeyword)
@@ -185,7 +187,9 @@ namespace Onyx.Syntax
         }
         private MemberSyntax ParseNamespaceMember()
         {
-            if (Current.Type == SyntaxType.FunctionKeyword)
+            if (Current.Type == SyntaxType.ClassKeyword)
+                return ParseClassDeclaration();
+            else if (Current.Type == SyntaxType.FunctionKeyword)
                 return ParseFunctionDeclaration();
             else if (Current.Type == SyntaxType.TemplateKeyword)
                 return ParseTemplateDeclaration();
@@ -234,24 +238,125 @@ namespace Onyx.Syntax
             var functionKeyword = MatchToken(SyntaxType.FunctionKeyword);
             var identifier = MatchToken(SyntaxType.IdentifierToken);
             var genericsDeclaration = ParseOptionalGenericsDeclaration();
-            var openParenthesisToken = MatchToken(SyntaxType.LeftParenthesisToken);
+            var leftParenthesisToken = MatchToken(SyntaxType.LeftParenthesisToken);
             var parameters = ParseParameterList();
-            var closeParenthesisToken = MatchToken(SyntaxType.RightParenthesisToken);
+            var rightParenthesisToken = MatchToken(SyntaxType.RightParenthesisToken);
             var type = ParseOptionalTypeClause();
             var body = ParseBlockOrLambdaStatement(type == null);
 
-            return new FunctionDeclarationSyntax(syntaxTree, functionKeyword, identifier, genericsDeclaration, openParenthesisToken, parameters, closeParenthesisToken, type, body);
+            return new FunctionDeclarationSyntax(syntaxTree, functionKeyword, identifier, genericsDeclaration, leftParenthesisToken, parameters, rightParenthesisToken, type, body);
         }
         private MemberSyntax ParseTemplateDeclaration()
         {
             var templateKeyword = MatchToken(SyntaxType.TemplateKeyword);
             var identifier = MatchToken(SyntaxType.IdentifierToken);
             var genericsDeclaration = ParseOptionalGenericsDeclaration();
-            var openBraceToken = MatchToken(SyntaxType.LeftBraceToken);
+            var leftBraceToken = MatchToken(SyntaxType.LeftBraceToken);
             var modelDeclarations = ParseTemplateParameterList();
-            var closeBraceToken = MatchToken(SyntaxType.RightBraceToken);
+            var rightBraceToken = MatchToken(SyntaxType.RightBraceToken);
 
-            return new TemplateDeclarationSyntax(syntaxTree, templateKeyword, identifier, genericsDeclaration, openBraceToken, modelDeclarations, closeBraceToken);
+            return new TemplateDeclarationSyntax(syntaxTree, templateKeyword, identifier, genericsDeclaration, leftBraceToken, modelDeclarations, rightBraceToken);
+        }
+        private MemberSyntax ParseClassDeclaration()
+        {
+            var abstractKeyword = MatchOptional(SyntaxType.AbstractKeyword);
+            var classKeyword = MatchToken(SyntaxType.ClassKeyword);
+            var identifier = MatchToken(SyntaxType.IdentifierToken);
+            var superClass = ParseOptionalTypeClause();
+            var genericsDeclaration = ParseOptionalGenericsDeclaration();
+            var leftBraceToken = MatchToken(SyntaxType.LeftBraceToken);
+            var members = ParseClassBody();
+            var rightBraceToken = MatchToken(SyntaxType.RightBraceToken);
+
+            return new ClassDeclarationSyntax(syntaxTree, abstractKeyword, classKeyword, identifier, genericsDeclaration, leftBraceToken, members, rightBraceToken);
+        }
+        private ImmutableArray<MemberSyntax> ParseClassBody()
+        {
+            if (Current.Type == SyntaxType.RightBraceToken)
+                return ImmutableArray<MemberSyntax>.Empty;
+
+            var members = ImmutableArray.CreateBuilder<MemberSyntax>();
+
+            while (Current.Type != SyntaxType.EoFToken && Current.Type != SyntaxType.RightBraceToken)
+            {
+                var startToken = Current;
+
+                members.Add(ParseClassMember());
+
+                // If ParseMember() did not consume any tokens,
+                // we need to skip the current token and continue
+                // in order to avoid an infinite loop.
+                //
+                // We don't need to report an error, because we'll
+                // already tried to parse an expression statement
+                // and reported one.
+                if (Current == startToken)
+                    NextToken();
+            }
+
+            return members.ToImmutable();
+        }
+        private MemberSyntax ParseClassMember()
+        {
+            if (Current.Type == SyntaxType.ConstructorKeyword)
+                return ParseConstructorDeclaration();
+            else if (Current.Type == SyntaxType.FunctionKeyword)
+                return ParseFunctionDeclaration();
+            else if (Current.Type == SyntaxType.AtToken)
+                return ParseAnnotationDeclaration();
+            else if (Current.Type == SyntaxType.AbstractKeyword)
+                return ParseAbstractMember();
+
+            return ParseProperty();
+        }
+        private MemberSyntax ParseAbstractMember()
+        {
+            var abstractKeyword = MatchToken(SyntaxType.AbstractKeyword);
+
+            if (Current.Type == SyntaxType.FunctionKeyword)
+                return ParseAbstractFunctionDeclaration(abstractKeyword);
+
+            return ParseAbstractProperty(abstractKeyword);
+        }
+        private MemberSyntax ParseAbstractFunctionDeclaration(SyntaxToken abstractKeyword)
+        {
+            var functionKeyword = MatchToken(SyntaxType.FunctionKeyword);
+            var identifier = MatchToken(SyntaxType.IdentifierToken);
+            var genericsDeclaration = ParseOptionalGenericsDeclaration();
+            var leftParenthesisToken = MatchToken(SyntaxType.LeftParenthesisToken);
+            var parameters = ParseParameterList();
+            var rightParenthesisToken = MatchToken(SyntaxType.RightParenthesisToken);
+            var type = ParseOptionalTypeClause();
+
+            return new AbstractFunctionDeclarationSyntax(syntaxTree, abstractKeyword, functionKeyword, identifier, genericsDeclaration, leftParenthesisToken, parameters, rightParenthesisToken, type);
+        }
+        private MemberSyntax ParseConstructorDeclaration()
+        {
+            var constructorKeyword = MatchToken(SyntaxType.ConstructorKeyword);
+            var leftParenthesisToken = MatchToken(SyntaxType.LeftParenthesisToken);
+            var parameters = ParseParameterList();
+            var rightParenthesisToken = MatchToken(SyntaxType.RightParenthesisToken);
+            var body = ParseBlockOrLambdaStatement(true);
+
+            return new ConstructorDeclarationSyntax(syntaxTree, constructorKeyword, leftParenthesisToken, parameters, rightParenthesisToken, body);
+        }
+        private MemberSyntax ParseProperty()
+        {
+            var readOnlyKeyword = MatchOptional(SyntaxType.ReadOnlyKeyword);
+            var varKeyword = MatchToken(SyntaxType.VarKeyword);
+            var identifier = MatchToken(SyntaxType.IdentifierToken);
+            var type = ParseTypeClause();
+
+            return new PropertyDeclarationSyntax(syntaxTree, readOnlyKeyword, varKeyword, identifier, type);
+        }
+        private MemberSyntax ParseAbstractProperty(SyntaxToken abstractKeyword)
+        {
+            var readOnlyKeyword = MatchOptional(SyntaxType.ReadOnlyKeyword);
+            var varKeyword = MatchToken(SyntaxType.VarKeyword);
+            var identifier = MatchToken(SyntaxType.IdentifierToken);
+            var type = ParseTypeClause();
+
+            return new AbstractPropertyDeclarationSyntax(syntaxTree, abstractKeyword, readOnlyKeyword, varKeyword, identifier, type);
         }
         private MemberSyntax ParseImportDeclaration()
         {
@@ -278,16 +383,13 @@ namespace Onyx.Syntax
             var nodesAndSeparators = ImmutableArray.CreateBuilder<SyntaxNode>();
 
             var parseNextParameter = true;
+
             while (parseNextParameter && Current.Type != SyntaxType.RightParenthesisToken && Current.Type != SyntaxType.EoFToken)
             {
-                var parameter = ParseParameter();
-                nodesAndSeparators.Add(parameter);
+                nodesAndSeparators.Add(ParseParameter());
 
                 if (Current.Type == SyntaxType.CommaToken)
-                {
-                    var comma = MatchToken(SyntaxType.CommaToken);
-                    nodesAndSeparators.Add(comma);
-                }
+                    nodesAndSeparators.Add(MatchToken(SyntaxType.CommaToken));
                 else
                     parseNextParameter = false;
             }
@@ -303,25 +405,26 @@ namespace Onyx.Syntax
         }
         private SeparatedSyntaxList<TemplateParameterSyntax> ParseTemplateParameterList()
         {
-            var nodesAndSeparators = ImmutableArray.CreateBuilder<SyntaxNode>();
+            var nodes = ImmutableArray.CreateBuilder<SyntaxNode>();
 
-            var parseNextParameter = true;
-            while (parseNextParameter && Current.Type != SyntaxType.RightBraceToken && Current.Type != SyntaxType.EoFToken)
+            var parseNext = true;
+
+            while (parseNext && Current.Type != SyntaxType.RightBraceToken && Current.Type != SyntaxType.EoFToken)
             {
-                nodesAndSeparators.Add(ParseTemplateParameter());
+                nodes.Add(ParseTemplateParameter());
 
                 if (Current.Type == SyntaxType.CommaToken)
                 {
-                    nodesAndSeparators.Add(MatchToken(SyntaxType.CommaToken));
+                    nodes.Add(MatchToken(SyntaxType.CommaToken));
 
                     if (Current.Type != SyntaxType.ReadOnlyKeyword && Current.Type != SyntaxType.IdentifierToken)
-                        parseNextParameter = false;
+                        parseNext = false;
                 }
                 else
-                    parseNextParameter = false;
+                    parseNext = false;
             }
 
-            return new SeparatedSyntaxList<TemplateParameterSyntax>(nodesAndSeparators.ToImmutable());
+            return new SeparatedSyntaxList<TemplateParameterSyntax>(nodes.ToImmutable());
         }
         private TemplateParameterSyntax ParseTemplateParameter()
         {
@@ -437,6 +540,13 @@ namespace Onyx.Syntax
 
             return new TypeDeclarationSyntax(syntaxTree, colonToken, type);
         }
+        private ExpressionSyntax ParseTypeExpression()
+        {
+            var colonToken = MatchToken(SyntaxType.ColonToken);
+            var type = ParseType();
+
+            return new TypeExpressionSyntax(syntaxTree, colonToken, type);
+        }
         private StatementSyntax ParseIfStatement()
         {
             var keyword = MatchToken(SyntaxType.IfKeyword);
@@ -548,6 +658,7 @@ namespace Onyx.Syntax
             {
                 var operatorToken = NextToken();
                 var operand = ParseBinaryExpression(unaryOperatorPrecedence);
+
                 left = new UnaryExpressionSyntax(syntaxTree, operatorToken, operand);
             }
             else
@@ -587,6 +698,8 @@ namespace Onyx.Syntax
                     return ParseNewExpression();
                 case SyntaxType.TypeofKeyword:
                     return ParseTypeofExpression();
+                case SyntaxType.ColonToken:
+                    return ParseTypeExpression();
                 case SyntaxType.IdentifierToken:
                 default:
                     return ParseNameOrCallExpression();
@@ -711,21 +824,20 @@ namespace Onyx.Syntax
         {
             if (Peek(0).Type == SyntaxType.IdentifierToken && Peek(1).Type == SyntaxType.LeftParenthesisToken)
                 return ParseCallExpression();
-            else if (Peek(0).Type == SyntaxType.IdentifierToken && Peek(1).Type == SyntaxType.DotToken)
-                return ParseDotExpression();
 
             return ParseNameExpression();
         }
         private ExpressionSyntax ParseCallExpression()
         {
             var identifier = MatchToken(SyntaxType.IdentifierToken);
+            var genericArguments = ParseOptionalGenericsArguments();
             var openParenthesisToken = MatchToken(SyntaxType.LeftParenthesisToken);
             var arguments = ParseArguments();
             var closeParenthesisToken = MatchToken(SyntaxType.RightParenthesisToken);
 
             IdentifiableExpressionSyntax? child = null;
 
-            return new CallExpressionSyntax(syntaxTree, identifier, openParenthesisToken, arguments, closeParenthesisToken, child);
+            return new CallExpressionSyntax(syntaxTree, identifier, genericArguments, openParenthesisToken, arguments, closeParenthesisToken, child);
         }
         private SeparatedSyntaxList<ExpressionSyntax> ParseArguments()
         {
@@ -763,14 +875,6 @@ namespace Onyx.Syntax
             var modifier = ParseModifier();
 
             return new NameExpressionSyntax(syntaxTree, identifierToken, modifier);
-        }
-        private ExpressionSyntax ParseDotExpression()
-        {
-            var leftToken = MatchToken(SyntaxType.IdentifierToken);
-            var dotToken = MatchToken(SyntaxType.DotToken);
-            var rightExpression = ParseNameOrCallExpression();
-
-            return new DotExpressionSyntax(syntaxTree, leftToken, dotToken, rightExpression);
         }
         private TypeSyntax ParseType(bool parseArraySize = false)
         {
@@ -895,57 +999,5 @@ namespace Onyx.Syntax
 
             return new CallSyntax(syntaxTree, leftParenthesisToken, arguments, rightParenthesisToken);
         }
-    }
-
-    internal sealed partial class Parser
-    {
-        /*private MemberSyntax ParseClassDeclaration()
-        {
-            var classKeyword = MatchToken(SyntaxType.ClassKeyword);
-            var identifier = MatchToken(SyntaxType.IdentifierToken);
-            var body = ParseClassBody();
-
-            return new ClassDeclarationSyntax(syntaxTree, classKeyword, identifier, body);
-        }
-        private ClassBodySyntax ParseClassBody()
-        {
-            var leftBraceToken = MatchToken(SyntaxType.LeftBraceToken);
-            var members = ParseClassMembers();
-            var rightBraceToken = MatchToken(SyntaxType.RightBraceToken);
-
-            return new ClassBodySyntax(syntaxTree, leftBraceToken, members, rightBraceToken);
-        }
-        private ImmutableArray<MemberSyntax> ParseClassMembers()
-        {
-            var members = ImmutableArray.CreateBuilder<MemberSyntax>();
-
-            while (Current.Type != SyntaxType.EoFToken)
-            {
-                var startToken = Current;
-
-                members.Add(ParseClassMember());
-
-                // If ParseMember() did not consume any tokens,
-                // we need to skip the current token and continue
-                // in order to avoid an infinite loop.
-                //
-                // We don't need to report an error, because we'll
-                // already tried to parse an expression statement
-                // and reported one.
-                if (Current == startToken)
-                    NextToken();
-            }
-
-            return members.ToImmutable();
-        }
-        private MemberSyntax ParseClassMember()
-        {
-            if (Current.Type == SyntaxType.FunctionKeyword)
-                return ParseFunctionDeclaration();
-            else if (Current.Type == SyntaxType.AtToken)
-                return ParseAnnotationDeclaration();
-
-            return ParseGlobalStatement();
-        }*/
     }
 }

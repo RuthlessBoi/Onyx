@@ -161,8 +161,6 @@ namespace Onyx.Binding
                     return RewriteNewExpression((BoundNewExpression)node);
                 case BoundNodeType.VariableExpression:
                     return RewriteVariableExpression((BoundVariableExpression)node);
-                case BoundNodeType.DotExpression:
-                    return RewriteDotExpression((BoundDotExpression)node);
                 case BoundNodeType.AssignmentExpression:
                     return RewriteAssignmentExpression((BoundAssignmentExpression)node);
                 case BoundNodeType.CompoundAssignmentExpression:
@@ -183,7 +181,6 @@ namespace Onyx.Binding
         protected virtual BoundExpression RewriteLiteralExpression(BoundLiteralExpression node) => node;
         protected virtual BoundExpression RewriteNewExpression(BoundNewExpression node) => node;
         protected virtual BoundExpression RewriteVariableExpression(BoundVariableExpression node) => node;
-        protected virtual BoundExpression RewriteDotExpression(BoundDotExpression node) => node;
         protected virtual BoundExpression RewriteAssignmentExpression(BoundAssignmentExpression node)
         {
             var expression = RewriteExpression(node.Expression);

@@ -36,6 +36,7 @@ namespace Onyx.Binding.Nodes
             new BoundBinaryOperator(SyntaxType.EqualsEqualsToken, BoundBinaryOperatorType.Equals, TypeSymbol.Any),
             new BoundBinaryOperator(SyntaxType.BangEqualsToken, BoundBinaryOperatorType.NotEquals, TypeSymbol.Any),
             new BoundBinaryOperator(SyntaxType.IsKeyword, BoundBinaryOperatorType.Is, TypeSymbol.Any, TypeSymbol.InternalType, TypeSymbol.Bool),
+            new BoundBinaryOperator(SyntaxType.DotToken, BoundBinaryOperatorType.Dot, TypeSymbol.Any),
         };
 
         public SyntaxType SyntaxType { get; }
@@ -59,7 +60,8 @@ namespace Onyx.Binding.Nodes
         {
             foreach (var op in operators)
             {
-                if (op.SyntaxType == syntaxType && op.LeftType == leftType && op.RightType == rightType)
+                if ((op.SyntaxType == syntaxType && op.LeftType == leftType && op.RightType == rightType) ||
+                    (op.SyntaxType == syntaxType && op.LeftType == TypeSymbol.Any && op.RightType == TypeSymbol.Any))
                     return op;
             }
 

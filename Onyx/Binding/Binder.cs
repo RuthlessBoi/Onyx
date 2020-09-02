@@ -335,24 +335,19 @@ namespace Onyx.Binding
             foreach (var parameterSyntax in syntax.Parameters)
             {
                 var parameterName = parameterSyntax.Identifier.Text;
-                var parameterType = BindTypeClause(parameterSyntax.TypeDeclaration);
+                var parameterType = BindTypeClause(parameterSyntax.TypeDeclaration, syntax.GenericsDeclaration);
+
                 if (!seenParameterNames.Add(parameterName))
-                {
                     diagnostics.ReportParameterAlreadyDeclared(parameterSyntax.Location, parameterName);
-                }
                 else
-                {
-                    var parameter = new ParameterSymbol(parameterName, parameterType, parameters.Count);
-                    parameters.Add(parameter);
-                }
+                    parameters.Add(new ParameterSymbol(parameterName, parameterType, parameters.Count));
             }
 
             var type = BindTypeClause(syntax.TypeDeclaration) ?? TypeSymbol.Void;
 
             var function = new FunctionSymbol(syntax.Identifier.Text, parameters.ToImmutable(), type, syntax);
 
-            if (syntax.Identifier.Text != null &&
-                !scope.TryDeclareFunction(function))
+            if (syntax.Identifier.Text != null && !scope.TryDeclareFunction(function))
             {
                 diagnostics.ReportSymbolAlreadyDeclared(syntax.Identifier.Location, function.Name);
             }
@@ -373,10 +368,7 @@ namespace Onyx.Binding
                 if (!seenParameterNames.Add(parameterName))
                     diagnostics.ReportParameterAlreadyDeclared(parameterSyntax.Location, parameterName);
                 else
-                {
-                    var parameter = new LocalVariableSymbol(parameterName, parameterSyntax.ReadOnlyToken != null, parameterType, null);
-                    template.TryDeclareVariable(parameter);
-                }
+                    template.TryDeclareVariable(new LocalVariableSymbol(parameterName, parameterSyntax.ReadOnlyToken != null, parameterType, null));
             }
 
             if (syntax.Identifier.Text != null && !scope.TryDeclareTemplate(template))
@@ -505,10 +497,10 @@ namespace Onyx.Binding
                     return BindNewExpression((NewExpressionSyntax)syntax);
                 case SyntaxType.NameExpression:
                     return BindNameExpression((NameExpressionSyntax)syntax);
-                case SyntaxType.DotExpression:
-                    return BindDotExpression((DotExpressionSyntax)syntax);
                 case SyntaxType.TypeofExpression:
                     return BindTypeofExpression((TypeofExpressionSyntax)syntax);
+                case SyntaxType.TypeExpression:
+                    return BindTypeExpression((TypeExpressionSyntax)syntax);
                 case SyntaxType.AssignmentExpression:
                     return BindAssignmentExpression((AssignmentExpressionSyntax)syntax);
                 case SyntaxType.UnaryExpression:
@@ -559,7 +551,7 @@ namespace Onyx.Binding
 
             var name = syntax.InternalType.Identifier.Text;
 
-            if (generics != null && owner != null)
+            if (generics != null) // && owner != null)
             {
                 if (generics.ContainsParameter(name))
                 {
@@ -604,15 +596,6 @@ namespace Onyx.Binding
                     return null;
             }
         }
-        private BoundVariableChain BindDotReference(DotExpressionSyntax syntax)
-        {
-            var bound = BindVariableReference(syntax.LeftToken);
-
-            if (syntax.RightExpression != null)
-                return new BoundVariableChain(bound, BindReference(bound.ValueType, syntax.RightExpression as IdentifiableExpressionSyntax), null);
-
-            return new BoundVariableChain(bound, null, null);
-        }
         private BoundVariableChain? BindReference(TypeSymbol symbol, IdentifiableExpressionSyntax child)
         {
             if (symbol != null)
@@ -653,6 +636,54 @@ namespace Onyx.Binding
                         return null;
                 }
             }
+
+            return null;
+        }
+        private VariableSymbol? BindSymbolReference(TypeSymbol symbol, IdentifiableExpressionSyntax child)
+        {
+            if (symbol != null)
+            {
+                var text = child.IdentifierToken.Text;
+
+                switch (symbol.TryLookupSymbol(text))
+                {
+                    case VariableSymbol variable:
+                        variable.References.AddReference(child.IdentifierToken, ReferenceType.Variable);
+
+                        return variable;
+                    case null:
+                        diagnostics.ReportUndefinedVariable(child.Location, text);
+                        return null;
+                    default:
+                        diagnostics.ReportNotAVariable(child.Location, text);
+                        return null;
+                }
+            }
+
+            return null;
+        }
+        private FunctionSymbol? BindFunctionReference(TypeSymbol symbol, IdentifiableExpressionSyntax child)
+        {
+            var text = child.IdentifierToken.Text;
+
+            if (symbol != null)
+            {
+                switch (symbol.TryLookupSymbol(text))
+                {
+                    case FunctionSymbol function:
+                        //function.References.AddReference(child.IdentifierToken);
+
+                        return function;
+                    case null:
+                        diagnostics.ReportUndefinedFunction(child.Location, text);
+                        return null;
+                    default:
+                        diagnostics.ReportNotAFunction(child.Location, text);
+                        return null;
+                }
+            }
+
+            diagnostics.ReportUndefinedFunction(child.Location, text);
 
             return null;
         }
@@ -717,7 +748,7 @@ namespace Onyx.Binding
         {
             var dict = new Dictionary<string, TypeSymbol>();
 
-            if (!generics.Parameters.Any() || !types.Any())
+            if (generics == null || !generics.Parameters.Any() || !types.Any())
                 return dict;
 
             for (int i = 0; i < generics.Parameters.Count; i++)

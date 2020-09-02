@@ -47,6 +47,10 @@
         SemiColonToken,
         EqualsGreaterToken,
         DotToken,
+        DotDotToken,
+        QuestionMarkToken,
+        QuestionMarkQuestionMarkToken,
+        QuestionMarkDotToken,
         AtToken,
 
         LeftParenthesisToken,
@@ -60,6 +64,7 @@
 
         // Keywords
         NamespaceKeyword,
+        AbstractKeyword,
         ClassKeyword,
         ConstructorKeyword,
         TemplateKeyword,
@@ -86,7 +91,12 @@
         // Nodes
         CompilationNode,
         NamespaceDeclarationNode,
+        ClassDeclarationNode,
         FunctionDeclarationNode,
+        AbstractFunctionDeclarationNode,
+        ConstructorDeclarationNode,
+        PropertyDeclarationNode,
+        AbstractPropertyDeclarationNode,
         ModelDeclarationNode,
         ImportDeclarationNode,
         AnnotationDeclarationNode,
@@ -121,6 +131,7 @@
         IndexerModifierExpression,
         DotExpression,
         TypeofExpression,
+        TypeExpression,
         NewExpression,
         UnaryExpression,
         BinaryExpression,
